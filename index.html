@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Overflow">
+  <meta name="application-name" content="Overflow">
+  <meta name="theme-color" content="#1a1109">
+  <link rel="apple-touch-icon" id="pwaIcon">
+  <link rel="manifest" id="pwaManifest">
+  <title>Cafe Overflow — 주문 카운터</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box; margin: 0; padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    :root {
+      --bg:      #130d06;
+      --bg2:     #1a1109;
+      --surface: #241810;
+      --s2:      #352518;
+      --s3:      #463323;
+      --accent:  #d4a853;
+      --text:    #f2e8d4;
+      --text2:   #c0a880;
+      --text3:   #7a6448;
+      --hot:     #e07040;
+      --ice:     #4a90d0;
+      --safe-b:  env(safe-area-inset-bottom, 0px);
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--surface);
+      border-bottom: 1px solid var(--s2);
+      padding: 10px 14px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo-row { display: flex; align-items: center; gap: 10px; }
+    .church-logo {
+      width: 40px; height: 40px; border-radius: 8px;
+      object-fit: contain; background: white; padding: 2px;
+    }
+    .logo-text { display: flex; flex-direction: column; line-height: 1; }
+    .lbl-cafe   { font-size: 9px; letter-spacing: 3px; color: var(--text3); text-transform: uppercase; }
+    .lbl-name   { font-size: 22px; font-weight: 800; color: var(--accent); letter-spacing: 0.5px; margin: 1px 0; }
+    .lbl-church { font-size: 9px; color: var(--text3); }
+    .header-btn {
+      width: 38px; height: 38px; border-radius: 50%;
+      border: 1.5px solid var(--s3); background: var(--s2);
+      color: var(--accent); font-size: 22px; font-weight: 300;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+
+    /* ── TABS ── */
+    .tabs-wrap {
+      position: sticky; top: 61px; z-index: 90;
+      background: var(--bg2); border-bottom: 1px solid var(--s2);
+    }
+    .tabs {
+      display: flex; gap: 6px; overflow-x: auto; padding: 8px 12px;
+      scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab {
+      flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
+      border: 1.5px solid var(--s2); background: transparent; color: var(--text3);
+      font-size: 12px; font-weight: 700; cursor: pointer;
+      transition: all 0.15s; position: relative; white-space: nowrap;
+    }
+    .tab.on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+    .tab-dot {
+      position: absolute; top: -3px; right: -3px;
+      min-width: 15px; height: 15px; border-radius: 8px;
+      background: #e05a5a; color: #fff;
+      font-size: 9px; font-weight: 800;
+      display: none; align-items: center; justify-content: center; padding: 0 3px;
+    }
+    .tab-dot.show { display: flex; }
+
+    /* ── CONTENT ── */
+    .content { padding: 12px 10px 180px; }
+    .section { display: none; }
+    .section.on { display: block; }
+    .sec-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .sec-dot  { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .sec-title { font-size: 13px; font-weight: 800; color: var(--text2); letter-spacing: 2px; }
+    .sec-note { font-size: 10px; color: var(--text3); background: var(--s2); padding: 2px 8px; border-radius: 8px; }
+
+    /* ── GRID ── */
+    .grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--surface);
+      border: 1.5px solid var(--s2);
+      border-radius: 13px; padding: 10px 10px 8px;
+      display: flex; flex-direction: column; gap: 7px;
+      transition: border-color 0.15s, background 0.15s;
+      user-select: none; position: relative;
+    }
+    .card.counted {
+      border-color: var(--accent);
+      background: linear-gradient(150deg, var(--surface) 30%, #28180a);
+    }
+    .card-name-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 5px; }
+    .card-info { flex: 1; min-width: 0; }
+    .card-name  { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.3; word-break: keep-all; }
+    .card-sub   { font-size: 9px; color: var(--text3); margin-top: 2px; }
+    .card-price { font-size: 12px; font-weight: 700; color: var(--accent); flex-shrink: 0; padding-top: 1px; }
+
+    /* ── COUNTER ROWS ── */
+    .ctr-rows { display: flex; flex-direction: column; gap: 3px; }
+    .ctr-row {
+      display: flex; align-items: center; gap: 3px;
+      padding: 3px 4px; border-radius: 8px;
+      transition: background 0.15s;
+    }
+    .ctr-row.hot-row.has-val { background: rgba(224,112,64,0.13); }
+    .ctr-row.ice-row.has-val { background: rgba(74,144,208,0.13); }
+
+    .ctr-lbl { font-size: 10px; font-weight: 800; width: 36px; flex-shrink: 0; letter-spacing: -0.3px; }
+    .ctr-lbl.hot { color: var(--hot); }
+    .ctr-lbl.ice { color: var(--ice); }
+
+    .ctr-btn {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: none; cursor: pointer; font-size: 17px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; touch-action: manipulation;
+      transition: transform 0.1s;
+    }
+    .ctr-btn:active { transform: scale(0.82); }
+    .ctr-btn.minus { background: var(--s2); color: var(--text3); }
+    .ctr-btn.plus.hot { background: var(--hot); color: #fff; }
+    .ctr-btn.plus.ice { background: var(--ice); color: #fff; }
+
+    .ctr-val {
+      flex: 1; text-align: center;
+      font-size: 15px; font-weight: 800; min-width: 18px;
+    }
+    .ctr-val.hot { color: var(--hot); }
+    .ctr-val.ice { color: var(--ice); }
+    .ctr-val.zero { color: var(--s3); font-size: 12px; font-weight: 400; }
+
+    /* custom card delete */
+    .card.custom.del-mode { border-color: #e05a5a !important; }
+
+    /* ── BOTTOM BAR ── */
+    .bar {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+      background: var(--surface);
+      border-top: 2px solid var(--accent);
+      padding: 10px 16px calc(10px + var(--safe-b));
+      cursor: pointer;
+    }
+    .bar-hint { text-align: center; font-size: 10px; color: var(--text3); margin-bottom: 6px; letter-spacing: 1px; }
+    .bar-main { display: flex; align-items: center; justify-content: space-between; }
+    .bar-left { display: flex; flex-direction: column; }
+    .bar-lbl   { font-size: 11px; color: var(--text3); }
+    .bar-cnt   { font-size: 16px; font-weight: 700; color: var(--text2); }
+    .bar-sub   { font-size: 11px; color: var(--text3); margin-top: 2px; }
+    .bar-total { font-size: 28px; font-weight: 800; color: var(--accent); }
+    .bar-arrow { font-size: 20px; color: var(--accent); }
+
+    /* ── MODAL COMMON ── */
+    .overlay {
+      position: fixed; inset: 0; z-index: 300;
+      background: rgba(0,0,0,0.72);
+      display: none; align-items: flex-end;
+      backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    }
+    .overlay.open { display: flex; }
+    .sheet {
+      background: var(--surface); border-radius: 20px 20px 0 0;
+      width: 100%; max-height: 88vh;
+      display: flex; flex-direction: column;
+      animation: up 0.22s ease;
+    }
+    @keyframes up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .handle { width: 38px; height: 4px; background: var(--s3); border-radius: 2px; margin: 12px auto 0; flex-shrink: 0; }
+    .sheet-head {
+      padding: 14px 18px 12px; border-bottom: 1px solid var(--s2);
+      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+    }
+    .sheet-title { font-size: 17px; font-weight: 800; color: var(--accent); }
+    .close-btn {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--s2); border: none;
+      color: var(--text2); font-size: 15px;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    .sheet-body { overflow-y: auto; flex: 1; padding: 0 18px; -webkit-overflow-scrolling: touch; }
+    .sheet-foot {
+      padding: 12px 18px calc(14px + var(--safe-b));
+      border-top: 1px solid var(--s2); flex-shrink: 0;
+    }
+
+    /* ── SUMMARY MODAL ── */
+    .order-item { padding: 11px 0; border-bottom: 1px solid var(--s2); }
+    .order-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+    .order-name { font-size: 14px; font-weight: 700; }
+    .order-item-total { font-size: 14px; font-weight: 800; color: var(--accent); }
+    .order-sub-row {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--text3); margin-top: 3px;
+    }
+    .order-temp { font-size: 11px; font-weight: 800; width: 42px; flex-shrink: 0; }
+    .order-temp.hot { color: var(--hot); }
+    .order-temp.ice { color: var(--ice); }
+    .order-sub-detail { flex: 1; }
+    .order-sub-price { color: var(--text2); font-weight: 600; }
+    .empty-msg { padding: 40px 0; text-align: center; color: var(--text3); font-size: 14px; }
+
+    .total-row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 14px; }
+    .total-lbl   { font-size: 15px; font-weight: 700; color: var(--text2); }
+    .total-sub   { font-size: 12px; color: var(--text3); margin-top: 2px; }
+    .total-price { font-size: 30px; font-weight: 800; color: var(--accent); }
+    .btn-row { display: flex; gap: 10px; }
+    .btn-reset {
+      flex: 1; padding: 14px; border-radius: 12px;
+      border: 1.5px solid var(--s3); background: transparent;
+      color: var(--text2); font-size: 14px; font-weight: 700; cursor: pointer;
+    }
+    .btn-confirm {
+      flex: 2; padding: 14px; border-radius: 12px;
+      border: none; background: var(--accent);
+      color: var(--bg); font-size: 15px; font-weight: 800; cursor: pointer;
+    }
+
+    /* ── ADD MENU MODAL ── */
+    .form-lbl { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+    .form-grp { margin-bottom: 13px; }
+    .form-row { display: flex; gap: 10px; }
+    .form-row .form-grp { flex: 1; }
+    input.finput, select.fselect {
+      width: 100%; padding: 12px 13px;
+      border-radius: 11px; border: 1.5px solid var(--s2);
+      background: var(--s2); color: var(--text);
+      font-size: 15px; font-family: inherit; outline: none;
+      -webkit-appearance: none; appearance: none;
+    }
+    input.finput:focus, select.fselect:focus { border-color: var(--accent); }
+    input.finput::placeholder { color: var(--text3); }
+    .ice-toggle {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 13px; border-radius: 11px;
+      border: 1.5px solid var(--s2); background: var(--s2);
+      cursor: pointer; color: var(--text2); font-size: 14px;
+    }
+    .ice-toggle input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--ice); }
+    .btn-add-ok {
+      width: 100%; padding: 14px; border-radius: 12px;
+      border: none; background: var(--accent);
+      color: var(--bg); font-size: 15px; font-weight: 800; cursor: pointer; margin-top: 2px;
+    }
+    .btn-add-cancel {
+      width: 100%; padding: 12px; border-radius: 12px;
+      border: none; background: transparent;
+      color: var(--text3); font-size: 14px; cursor: pointer; margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- 카카오톡/인앱브라우저 Safari 안내 -->
+<div id="safariGuide" style="
+  display:none; position:fixed; inset:0; z-index:9999;
+  background:#130d06; flex-direction:column;
+  align-items:center; justify-content:center; padding:32px; text-align:center;">
+  <div style="font-size:52px; margin-bottom:16px;">🧭</div>
+  <div style="font-size:21px; font-weight:800; color:#d4a853; margin-bottom:10px;">
+    Safari로 열어주세요
+  </div>
+  <div style="font-size:14px; color:#c0a880; line-height:1.7; margin-bottom:28px;">
+    카카오톡 안에서는 앱이 동작하지 않아요.<br>
+    아래 방법으로 <b style="color:#d4a853">Safari</b>에서 열어주세요.
+  </div>
+  <div style="
+    background:#241810; border:1px solid #352518;
+    border-radius:16px; padding:22px 24px;
+    width:100%; text-align:left;
+    color:#f2e8d4; font-size:15px; line-height:2.4;">
+    <div>1️⃣ 화면 우상단 <b style="color:#d4a853"> ··· </b> 탭</div>
+    <div>2️⃣ <b style="color:#d4a853">다른 앱으로 열기</b> 선택</div>
+    <div>3️⃣ <b style="color:#d4a853">Safari</b> 선택</div>
+  </div>
+  <div style="
+    margin-top:16px; padding:16px 24px;
+    background:#1a1109; border-radius:12px;
+    width:100%; text-align:left;
+    color:#7a6448; font-size:13px; line-height:2;">
+    <div style="color:#c0a880; font-weight:700; margin-bottom:4px;">Safari가 목록에 없으면:</div>
+    <div>1️⃣ <b style="color:#8a7050">파일로 저장</b> 선택</div>
+    <div>2️⃣ 아이폰 <b style="color:#8a7050">파일 앱</b> 열기</div>
+    <div>3️⃣ 파일 <b style="color:#8a7050">길게 누르기</b> → 공유</div>
+    <div>4️⃣ <b style="color:#8a7050">Safari로 열기</b></div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo-row">
+    <img class="church-logo"
+         src="https://cdn.imweb.me/thumbnail/20260421/6b6ed4b57d779.png"
+         alt="광명교회" onerror="this.style.display='none'">
+    <div class="logo-text">
+      <span class="lbl-cafe">Cafe</span>
+      <span class="lbl-name">Overflow</span>
+      <span class="lbl-church">광명교회</span>
+    </div>
+  </div>
+  <button class="header-btn" id="openAddBtn">＋</button>
+</header>
+
+<!-- TABS -->
+<div class="tabs-wrap"><div class="tabs" id="tabs"></div></div>
+
+<!-- CONTENT -->
+<div class="content" id="content"></div>
+
+<!-- BOTTOM BAR -->
+<div class="bar" id="bar">
+  <div class="bar-hint">▲ 탭하여 주문 내역 확인</div>
+  <div class="bar-main">
+    <div class="bar-left">
+      <span class="bar-lbl">총 주문</span>
+      <span class="bar-cnt" id="barCnt">0잔</span>
+      <span class="bar-sub" id="barSub"></span>
+    </div>
+    <span class="bar-total" id="barTotal">0원</span>
+    <span class="bar-arrow">›</span>
+  </div>
+</div>
+
+<!-- SUMMARY MODAL -->
+<div class="overlay" id="summaryOverlay">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-head">
+      <span class="sheet-title">📋 주문 내역</span>
+      <button class="close-btn" id="closeSummary">✕</button>
+    </div>
+    <div class="sheet-body" id="orderList"></div>
+    <div class="sheet-foot">
+      <div class="total-row">
+        <div>
+          <div class="total-lbl">합계</div>
+          <div class="total-sub" id="modalCups"></div>
+        </div>
+        <div class="total-price" id="modalTotal">0원</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-reset" id="resetBtn">🗑 전체 초기화</button>
+        <button class="btn-confirm" id="closeSummary2">확인</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD MENU MODAL -->
+<div class="overlay" id="addOverlay">
+  <div class="sheet" style="max-height:92vh">
+    <div class="handle"></div>
+    <div class="sheet-head">
+      <span class="sheet-title">메뉴 직접 추가</span>
+      <button class="close-btn" id="closeAdd">✕</button>
+    </div>
+    <div class="sheet-body" style="padding-top:16px">
+      <div class="form-grp">
+        <div class="form-lbl">카테고리</div>
+        <select class="fselect" id="addCat">
+          <option value="coffee">☕ COFFEE</option>
+          <option value="noncoffee">🥛 NON COFFEE</option>
+          <option value="blended">🥤 BLENDED</option>
+          <option value="ade">🍋 ADE</option>
+          <option value="tea">🍵 TEA</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-grp" style="flex:2">
+          <div class="form-lbl">메뉴 이름</div>
+          <input class="finput" id="addName" type="text" placeholder="예: 시그니처 라떼" autocomplete="off">
+        </div>
+        <div class="form-grp" style="flex:1">
+          <div class="form-lbl">가격 (원)</div>
+          <input class="finput" id="addPrice" type="number" placeholder="4000" inputmode="numeric" min="0" step="500">
+        </div>
+      </div>
+      <div class="form-grp">
+        <div class="form-lbl">메모 (선택)</div>
+        <input class="finput" id="addNote" type="text" placeholder="예: 시즌 한정…" autocomplete="off">
+      </div>
+      <div class="form-grp">
+        <label class="ice-toggle">
+          <input type="checkbox" id="addIceOnly">
+          🧊 아이스 전용 (HOT 버튼 없음)
+        </label>
+      </div>
+      <button class="btn-add-ok" id="submitAdd">추가하기</button>
+      <button class="btn-add-cancel" id="cancelAdd">취소</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────
+// 인앱 브라우저 감지 → Safari 안내
+// ─────────────────────────
+(function() {
+  const ua = navigator.userAgent || '';
+  const isInApp = /KAKAOTALK|KAKAOSTORY|NAVER|Line\/|Instagram|FBAN|FBAV|Twitter/i.test(ua);
+  // iOS인데 Safari가 아닌 경우도 추가 감지
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  const isSafari = /Safari/i.test(ua) && !/Chrome|CriOS|FxiOS|OPiOS|mercury/i.test(ua);
+  const shouldGuide = isInApp || (isIOS && !isSafari && !navigator.standalone);
+  if (shouldGuide) {
+    document.getElementById('safariGuide').style.display = 'flex';
+  }
+})();
+
+// ─────────────────────────
+// MENU DATA
+// ─────────────────────────
+const CATS = {
+  coffee: {
+    label:'COFFEE', emoji:'☕', dot:'#7a4520',
+    items:[
+      { id:'c01', name:'아메리카노',           price:2000 },
+      { id:'c02', name:'오플리카노',           note:'Size UP',       price:3000 },
+      { id:'c03', name:'버터스카치 크림 라떼', price:4000 },
+      { id:'c04', name:'바나나 샷 라떼',       price:4000 },
+      { id:'c05', name:'카페라떼',             price:3000 },
+      { id:'c06', name:'카푸치노',             price:3000 },
+      { id:'c07', name:'바닐라라떼',           price:3500 },
+      { id:'c08', name:'헤이즐넛라떼',         price:3500 },
+      { id:'c09', name:'카페모카',             price:3500 },
+      { id:'c10', name:'디카페인 변경',        note:'커피 메뉴에 추가', price:1000 },
+    ]
+  },
+  noncoffee: {
+    label:'NON COFFEE', emoji:'🥛', dot:'#3d6b4a',
+    items:[
+      { id:'n01', name:'초코 라떼',   price:3500 },
+      { id:'n02', name:'말차 라떼',   price:3500 },
+      { id:'n03', name:'오곡 라떼',   price:3500 },
+      { id:'n04', name:'토피넛 라떼', price:3500 },
+      { id:'n05', name:'얼박사',      note:'Iced Only', iceOnly:true, price:3000 },
+      { id:'n06', name:'아이스티',    note:'Iced Only', iceOnly:true, price:3000 },
+      { id:'n07', name:'아샷추',      note:'Iced Only', iceOnly:true, price:3500 },
+      { id:'n08', name:'딸기라떼',    note:'Iced Only', iceOnly:true, price:4300 },
+    ]
+  },
+  blended: {
+    label:'BLENDED', emoji:'🥤', dot:'#5a3d7a', iceOnly:true,
+    items:[
+      { id:'b01', name:'플레인 요거트 스무디',   price:4300 },
+      { id:'b02', name:'딸기 요거트 스무디',     price:4300 },
+      { id:'b03', name:'블루베리 요거트 스무디', price:4300 },
+      { id:'b04', name:'오레오 스무디',          price:4300 },
+      { id:'b05', name:'망고주스',               price:4000 },
+      { id:'b06', name:'토마토주스', note:'여름 시즌음료', price:4300 },
+    ]
+  },
+  ade: {
+    label:'ADE', emoji:'🍋', dot:'#2a5a8a', iceOnly:true,
+    items:[
+      { id:'a01', name:'레몬 에이드',   price:3500 },
+      { id:'a02', name:'자몽 에이드',   price:3500 },
+      { id:'a03', name:'청포도 에이드', price:3500 },
+    ]
+  },
+  tea: {
+    label:'TEA', emoji:'🍵', dot:'#c45a2a',
+    items:[
+      { id:'t01', name:'레몬 / 자몽 / 유자', price:3500 },
+      { id:'t02', name:'쌍화차', note:'겨울 시즌음료', price:3500 },
+      { id:'t03', name:'캐모마일', price:3000 },
+      { id:'t04', name:'페퍼민트', price:3000 },
+    ]
+  },
+};
+
+// ─────────────────────────
+// STATE
+// counts[id] = { hot: n, ice: n }
+// ─────────────────────────
+let customs = JSON.parse(localStorage.getItem('of_customs') || '[]');
+
+// Load & migrate old counts format
+function loadCounts() {
+  const raw = JSON.parse(localStorage.getItem('of_counts2') || '{}');
+  // migrate v1 (plain number) → v2 (object)
+  const migrated = {};
+  for (const [id, val] of Object.entries(raw)) {
+    if (typeof val === 'number') migrated[id] = { hot: val, ice: 0 };
+    else if (val && typeof val === 'object') migrated[id] = val;
+  }
+  return migrated;
+}
+let counts = loadCounts();
+let currentCat = 'coffee';
+
+// Inject saved custom items
+customs.forEach(item => {
+  const cat = CATS[item.cat];
+  if (cat && !cat.items.find(i => i.id === item.id)) cat.items.push(item);
+});
+
+// ─────────────────────────
+// HELPERS
+// ─────────────────────────
+function findItem(id) {
+  for (const cat of Object.values(CATS)) {
+    const f = cat.items.find(i => i.id === id);
+    if (f) return f;
+  }
+  return null;
+}
+
+function findCatKey(id) {
+  for (const [key, cat] of Object.entries(CATS)) {
+    if (cat.items.find(i => i.id === id)) return key;
+  }
+  return null;
+}
+
+function isIceOnly(item, catKey) {
+  return !!(item.iceOnly || CATS[catKey]?.iceOnly);
+}
+
+function itemCounts(id) {
+  const c = counts[id];
+  if (!c) return { hot: 0, ice: 0 };
+  return { hot: c.hot || 0, ice: c.ice || 0 };
+}
+
+function itemTotal(id) {
+  const { hot, ice } = itemCounts(id);
+  return hot + ice;
+}
+
+function getTotals() {
+  let totalCups = 0, totalHot = 0, totalIce = 0, totalPrice = 0;
+  for (const [id, c] of Object.entries(counts)) {
+    const hot = c.hot || 0, ice = c.ice || 0;
+    const n = hot + ice;
+    if (!n) continue;
+    const item = findItem(id);
+    if (!item) continue;
+    totalCups  += n;
+    totalHot   += hot;
+    totalIce   += ice;
+    totalPrice += item.price * n;
+  }
+  return { totalCups, totalHot, totalIce, totalPrice };
+}
+
+function fmt(n) { return n.toLocaleString('ko-KR') + '원'; }
+
+function saveAll() {
+  localStorage.setItem('of_counts2',  JSON.stringify(counts));
+  localStorage.setItem('of_customs', JSON.stringify(customs));
+}
+
+// ─────────────────────────
+// TABS
+// ─────────────────────────
+function renderTabs() {
+  const wrap = document.getElementById('tabs');
+  wrap.innerHTML = Object.entries(CATS).map(([key, cat]) => `
+    <button class="tab${key===currentCat?' on':''}" data-cat="${key}">
+      ${cat.emoji} ${cat.label}
+      <span class="tab-dot" id="tdot-${key}"></span>
+    </button>`).join('');
+  wrap.querySelectorAll('.tab').forEach(btn =>
+    btn.addEventListener('click', () => switchTab(btn.dataset.cat)));
+  updateTabDots();
+}
+
+function updateTabDots() {
+  for (const [key, cat] of Object.entries(CATS)) {
+    const dot = document.getElementById('tdot-' + key);
+    if (!dot) continue;
+    const n = cat.items.reduce((s, i) => s + itemTotal(i.id), 0);
+    dot.textContent = n > 9 ? '9+' : n;
+    dot.classList.toggle('show', n > 0);
+  }
+}
+
+function switchTab(cat) {
+  currentCat = cat;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.cat === cat));
+  document.querySelectorAll('.section').forEach(s => s.classList.toggle('on', s.dataset.cat === cat));
+}
+
+// ─────────────────────────
+// CONTENT
+// ─────────────────────────
+function renderContent() {
+  const wrap = document.getElementById('content');
+  wrap.innerHTML = '';
+  for (const [key, cat] of Object.entries(CATS)) {
+    const sec = document.createElement('div');
+    sec.className = 'section' + (key === currentCat ? ' on' : '');
+    sec.dataset.cat = key;
+    const noteHtml = cat.note ? `<span class="sec-note">${cat.note}</span>` : '';
+    sec.innerHTML = `
+      <div class="sec-head">
+        <div class="sec-dot" style="background:${cat.dot}"></div>
+        <span class="sec-title">${cat.label}</span>
+        ${noteHtml}
+      </div>
+      <div class="grid" id="grid-${key}"></div>`;
+    wrap.appendChild(sec);
+    const grid = sec.querySelector('.grid');
+    cat.items.forEach(item => grid.appendChild(makeCard(item, key)));
+  }
+}
+
+function makeCard(item, catKey) {
+  const isCustom = !!item.cat;
+  const iceOny = isIceOnly(item, catKey);
+
+  const card = document.createElement('div');
+  card.className = 'card' + (isCustom ? ' custom' : '');
+  card.id = 'card-' + item.id;
+
+  const subHtml = item.note ? `<div class="card-sub">${item.note}</div>` : '';
+
+  const hotRowHtml = iceOny ? '' : `
+    <div class="ctr-row hot-row">
+      <span class="ctr-lbl hot">☕HOT</span>
+      <button class="ctr-btn minus" data-id="${item.id}" data-temp="hot">－</button>
+      <span class="ctr-val hot zero" id="cv-${item.id}-hot">0</span>
+      <button class="ctr-btn plus hot" data-id="${item.id}" data-temp="hot">＋</button>
+    </div>`;
+
+  const iceRowHtml = `
+    <div class="ctr-row ice-row">
+      <span class="ctr-lbl ice">🧊ICE</span>
+      <button class="ctr-btn minus" data-id="${item.id}" data-temp="ice">－</button>
+      <span class="ctr-val ice zero" id="cv-${item.id}-ice">0</span>
+      <button class="ctr-btn plus ice" data-id="${item.id}" data-temp="ice">＋</button>
+    </div>`;
+
+  card.innerHTML = `
+    <div class="card-name-row">
+      <div class="card-info">
+        <div class="card-name">${item.name}</div>
+        ${subHtml}
+      </div>
+      <div class="card-price">${fmt(item.price)}</div>
+    </div>
+    <div class="ctr-rows">${hotRowHtml}${iceRowHtml}</div>`;
+
+  card.querySelectorAll('.ctr-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const id   = btn.dataset.id;
+      const temp = btn.dataset.temp;
+      btn.classList.contains('plus') ? increment(id, temp) : decrement(id, temp);
+    });
+  });
+
+  if (isCustom) {
+    let timer;
+    card.addEventListener('pointerdown', () => {
+      timer = setTimeout(() => {
+        if (confirm(`"${item.name}" 메뉴를 삭제할까요?`)) deleteCustom(item.id, catKey);
+      }, 700);
+    });
+    card.addEventListener('pointerup',    () => clearTimeout(timer));
+    card.addEventListener('pointerleave', () => clearTimeout(timer));
+  }
+
+  updateCardUI(item.id);
+  return card;
+}
+
+// ─────────────────────────
+// COUNT ACTIONS
+// ─────────────────────────
+function increment(id, temp) {
+  if (!counts[id]) counts[id] = { hot: 0, ice: 0 };
+  counts[id][temp] = (counts[id][temp] || 0) + 1;
+  updateCardUI(id);
+  updateBar();
+  updateTabDots();
+  saveAll();
+}
+
+function decrement(id, temp) {
+  const c = counts[id];
+  if (!c || !c[temp]) return;
+  c[temp]--;
+  if ((c.hot || 0) + (c.ice || 0) === 0) delete counts[id];
+  updateCardUI(id);
+  updateBar();
+  updateTabDots();
+  saveAll();
+}
+
+function updateCardUI(id) {
+  const card = document.getElementById('card-' + id);
+  if (!card) return;
+  const { hot, ice } = itemCounts(id);
+  const total = hot + ice;
+
+  card.classList.toggle('counted', total > 0);
+
+  const hotEl  = document.getElementById('cv-' + id + '-hot');
+  const iceEl  = document.getElementById('cv-' + id + '-ice');
+  const hotRow = card.querySelector('.hot-row');
+  const iceRow = card.querySelector('.ice-row');
+
+  if (hotEl) {
+    hotEl.textContent = hot || '0';
+    hotEl.classList.toggle('zero', hot === 0);
+    if (hotRow) hotRow.classList.toggle('has-val', hot > 0);
+  }
+  if (iceEl) {
+    iceEl.textContent = ice || '0';
+    iceEl.classList.toggle('zero', ice === 0);
+    if (iceRow) iceRow.classList.toggle('has-val', ice > 0);
+  }
+}
+
+// ─────────────────────────
+// BOTTOM BAR
+// ─────────────────────────
+function updateBar() {
+  const { totalCups, totalHot, totalIce, totalPrice } = getTotals();
+  document.getElementById('barCnt').textContent   = totalCups + '잔';
+  document.getElementById('barTotal').textContent = fmt(totalPrice);
+
+  const sub = document.getElementById('barSub');
+  const parts = [];
+  if (totalHot > 0) parts.push(`☕HOT ${totalHot}`);
+  if (totalIce > 0) parts.push(`🧊ICE ${totalIce}`);
+  sub.textContent = parts.join('  ');
+}
+
+// ─────────────────────────
+// SUMMARY MODAL
+// ─────────────────────────
+function openSummary() {
+  const list = document.getElementById('orderList');
+  const { totalCups, totalPrice } = getTotals();
+
+  const rows = Object.entries(counts)
+    .map(([id, c]) => ({ item: findItem(id), hot: c.hot||0, ice: c.ice||0 }))
+    .filter(r => r.item && (r.hot + r.ice) > 0);
+
+  if (!rows.length) {
+    list.innerHTML = '<div class="empty-msg">아직 주문된 메뉴가 없습니다 ☕</div>';
+  } else {
+    list.innerHTML = rows.map(({ item, hot, ice }) => {
+      const subLines = [];
+      if (hot > 0) subLines.push(`
+        <div class="order-sub-row">
+          <span class="order-temp hot">☕ HOT</span>
+          <span class="order-sub-detail">${hot}잔 × ${fmt(item.price)}</span>
+          <span class="order-sub-price">${fmt(hot * item.price)}</span>
+        </div>`);
+      if (ice > 0) subLines.push(`
+        <div class="order-sub-row">
+          <span class="order-temp ice">🧊 ICE</span>
+          <span class="order-sub-detail">${ice}잔 × ${fmt(item.price)}</span>
+          <span class="order-sub-price">${fmt(ice * item.price)}</span>
+        </div>`);
+      return `
+        <div class="order-item">
+          <div class="order-head">
+            <span class="order-name">${item.name}</span>
+            <span class="order-item-total">${fmt((hot+ice)*item.price)}</span>
+          </div>
+          ${subLines.join('')}
+        </div>`;
+    }).join('');
+  }
+
+  document.getElementById('modalCups').textContent  = '총 ' + totalCups + '잔';
+  document.getElementById('modalTotal').textContent = fmt(totalPrice);
+  document.getElementById('summaryOverlay').classList.add('open');
+}
+
+function closeSummary() {
+  document.getElementById('summaryOverlay').classList.remove('open');
+}
+
+function resetOrders() {
+  if (!confirm('모든 주문을 초기화할까요?')) return;
+  counts = {};
+  saveAll();
+  for (const cat of Object.values(CATS)) cat.items.forEach(i => updateCardUI(i.id));
+  updateBar();
+  updateTabDots();
+  closeSummary();
+}
+
+// ─────────────────────────
+// ADD CUSTOM MENU
+// ─────────────────────────
+function openAdd() {
+  document.getElementById('addOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('addName').focus(), 200);
+}
+
+function closeAdd() {
+  document.getElementById('addOverlay').classList.remove('open');
+  document.getElementById('addName').value  = '';
+  document.getElementById('addPrice').value = '';
+  document.getElementById('addNote').value  = '';
+  document.getElementById('addIceOnly').checked = false;
+}
+
+function submitAdd() {
+  const name    = document.getElementById('addName').value.trim();
+  const price   = parseInt(document.getElementById('addPrice').value) || 0;
+  const note    = document.getElementById('addNote').value.trim();
+  const cat     = document.getElementById('addCat').value;
+  const iceOnly = document.getElementById('addIceOnly').checked;
+
+  if (!name)     { alert('메뉴 이름을 입력해주세요'); return; }
+  if (price < 1) { alert('가격을 입력해주세요');      return; }
+
+  const id   = 'u' + Date.now();
+  const item = { id, name, price, note, cat, iceOnly };
+
+  CATS[cat].items.push(item);
+  customs.push(item);
+  saveAll();
+
+  const grid = document.getElementById('grid-' + cat);
+  if (grid) grid.appendChild(makeCard(item, cat));
+
+  closeAdd();
+  switchTab(cat);
+}
+
+function deleteCustom(id, catKey) {
+  CATS[catKey].items = CATS[catKey].items.filter(i => i.id !== id);
+  customs = customs.filter(i => i.id !== id);
+  delete counts[id];
+  saveAll();
+  document.getElementById('card-' + id)?.remove();
+  updateBar();
+  updateTabDots();
+}
+
+// ─────────────────────────
+// EVENT WIRING
+// ─────────────────────────
+document.getElementById('bar').addEventListener('click', openSummary);
+document.getElementById('closeSummary').addEventListener('click', closeSummary);
+document.getElementById('closeSummary2').addEventListener('click', closeSummary);
+document.getElementById('resetBtn').addEventListener('click', resetOrders);
+document.getElementById('summaryOverlay').addEventListener('click', e => { if (e.target.id === 'summaryOverlay') closeSummary(); });
+
+document.getElementById('openAddBtn').addEventListener('click', openAdd);
+document.getElementById('submitAdd').addEventListener('click', submitAdd);
+document.getElementById('cancelAdd').addEventListener('click', closeAdd);
+document.getElementById('closeAdd').addEventListener('click', closeAdd);
+document.getElementById('addOverlay').addEventListener('click', e => { if (e.target.id === 'addOverlay') closeAdd(); });
+
+['addName','addPrice','addNote'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') submitAdd(); });
+});
+
+// ─────────────────────────
+// PWA 아이콘 & 매니페스트
+// ─────────────────────────
+(function setupPWA() {
+  // roundRect 폴리필 (iOS 15.4 미만 대응)
+  if (!CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+      r = Math.min(r, w / 2, h / 2);
+      this.moveTo(x + r, y);
+      this.arcTo(x + w, y,     x + w, y + h, r);
+      this.arcTo(x + w, y + h, x,     y + h, r);
+      this.arcTo(x,     y + h, x,     y,     r);
+      this.arcTo(x,     y,     x + w, y,     r);
+      this.closePath();
+    };
+  }
+
+  function drawIcon(size) {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    const ctx = cv.getContext('2d');
+    const s = size;
+
+    const bg = ctx.createLinearGradient(0, 0, s * 0.6, s);
+    bg.addColorStop(0, '#231508');
+    bg.addColorStop(1, '#0d0804');
+    ctx.beginPath();
+    ctx.roundRect(0, 0, s, s, s * 0.2);
+    ctx.fillStyle = bg;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(s/2, s*0.43, s*0.31, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(212,168,83,0.35)';
+    ctx.lineWidth = s * 0.01;
+    ctx.stroke();
+
+    ctx.save();
+    ctx.shadowColor = '#d4a853';
+    ctx.shadowBlur  = s * 0.07;
+    const bw = s * 0.055;
+    ctx.beginPath();
+    ctx.roundRect(s/2 - bw/2, s*0.14, bw, s*0.52, bw/2);
+    ctx.fillStyle = '#d4a853';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(s*0.28, s*0.3, s*0.44, bw, bw/2);
+    ctx.fillStyle = '#d4a853';
+    ctx.fill();
+    ctx.restore();
+
+    ctx.font = `700 ${s*0.075}px -apple-system,Arial`;
+    ctx.fillStyle = '#8a6840';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('광명교회', s/2, s*0.79);
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(212,168,83,0.5)';
+    ctx.shadowBlur  = s * 0.04;
+    ctx.font = `900 ${s*0.115}px 'Arial Black',Arial`;
+    ctx.fillStyle = '#d4a853';
+    ctx.fillText('Overflow', s/2, s*0.905);
+    ctx.restore();
+
+    return cv.toDataURL('image/png');
+  }
+
+  try {
+    const i192 = drawIcon(192), i512 = drawIcon(512);
+    document.getElementById('pwaIcon').href = i512;
+    const manifest = {
+      name: '광명교회 Cafe Overflow', short_name: 'Overflow',
+      description: '광명교회 카페 오버플로우 주문 카운터',
+      start_url: '.', display: 'standalone', orientation: 'portrait-primary',
+      background_color: '#130d06', theme_color: '#1a1109',
+      icons: [
+        { src: i192, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+        { src: i512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+      ]
+    };
+    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+    document.getElementById('pwaManifest').href = URL.createObjectURL(blob);
+  } catch(e) { console.warn('PWA setup skipped:', e); }
+})();
+
+// ─────────────────────────
+// INIT
+// ─────────────────────────
+renderTabs();
+renderContent();
+updateBar();
+</script>
+</body>
+</html>
