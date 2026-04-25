@@ -419,12 +419,13 @@
 // 인앱 브라우저 감지 → Safari 안내
 // ─────────────────────────
 (function() {
+  // file:// 로 직접 열었을 때만 Safari 안내 표시 (GitHub Pages URL은 제외)
+  const isFileProtocol = location.protocol === 'file:';
   const ua = navigator.userAgent || '';
   const isInApp = /KAKAOTALK|KAKAOSTORY|NAVER|Line\/|Instagram|FBAN|FBAV|Twitter/i.test(ua);
-  // iOS인데 Safari가 아닌 경우도 추가 감지
   const isIOS = /iPhone|iPad|iPod/i.test(ua);
   const isSafari = /Safari/i.test(ua) && !/Chrome|CriOS|FxiOS|OPiOS|mercury/i.test(ua);
-  const shouldGuide = isInApp || (isIOS && !isSafari && !navigator.standalone);
+  const shouldGuide = isFileProtocol && (isInApp || (isIOS && !isSafari && !navigator.standalone));
   if (shouldGuide) {
     document.getElementById('safariGuide').style.display = 'flex';
   }
